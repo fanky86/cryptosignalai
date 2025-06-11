@@ -7,36 +7,37 @@ const chatId = '7708185346';
 
 const indodax = new ccxt.indodax();
 
-// Ambil semua market dari Indodax
 export default async function handler(req, res) {
   try {
     await indodax.loadMarkets();
-    const markets = indodax.markets;
 
-    // Filter hanya market IDR
-    const idrMarkets = Object.keys(markets).filter((symbol) => symbol.endsWith('idr'));
+    // Ambil semua market IDR
+    const idrMarkets = Object.values(indodax.markets)
+      .filter(m => m.symbol.endsWith('/IDR'));
 
-    const changes = [];
+    const priceChanges = [];
 
-    for (const symbol of idrMarkets) {
-      const ticker = await indodax.fetchTicker(symbol);
-      const percent = ticker.percentage;
-
-      if (percent !== undefined && percent !== null) {
-        changes.push({
-          symbol,
-          change: percent,
+    for (const market of idrMarkets) {
+      try {
+        const ticker = await indodax.fetchTicker(market.symbol);
+        priceChanges.push({
+          symbol: market.symbol,
+          id: market.id, // penting untuk fetchOHLCV
+          change: ticker.percentage || 0,
           last: ticker.last,
         });
+      } catch (e) {
+        // skip jika error (pasar tidak aktif, dll)
+        continue;
       }
     }
 
-    // Urutkan berdasarkan kenaikan harga tertinggi
-    changes.sort((a, b) => b.change - a.change);
-    const top = changes[0]; // Ambil coin paling naik
+    // Urutkan berdasarkan perubahan terbesar
+    priceChanges.sort((a, b) => b.change - a.change);
 
-    // Ambil OHLCV dari coin tersebut
-    const ohlcv = await indodax.fetchOHLCV(top.symbol, '1m', undefined, 100);
+    const top = priceChanges[0]; // Coin dengan kenaikan tertinggi
+
+    const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
     const closes = ohlcv.map(c => c[4]);
 
     const rsi = technicalindicators.RSI.calculate({ period: 14, values: closes });
@@ -50,10 +51,10 @@ export default async function handler(req, res) {
       SimpleMASignal: false
     });
 
-    const latestRSI = rsi[rsi.length - 1];
-    const latestEMA = ema[ema.length - 1];
-    const latestMACD = macd[macd.length - 1];
-    const priceNow = closes[closes.length - 1];
+    const latestRSI = rsi.at(-1);
+    const latestEMA = ema.at(-1);
+    const latestMACD = macd.at(-1);
+    const priceNow = closes.at(-1);
 
     let signal = null;
 
@@ -66,8 +67,8 @@ export default async function handler(req, res) {
     let messages = [];
 
     if (signal) {
-      const confidence = Math.floor(Math.random() * 11) + 90; // 90 - 100%
-      const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${top.symbol.toUpperCase()}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nPerubahan 24 Jam: ${top.change}%\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
+      const confidence = Math.floor(Math.random() * 11) + 90;
+      const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${top.symbol}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nPerubahan 24 Jam: ${top.change}%\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
       await bot.telegram.sendMessage(chatId, message);
       messages.push(message);
     }
