@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "scripts": {
+    "start": "node api/index.js"
+  },
   "dependencies": {
     "ccxt": "^4.1.80",
     "telegraf": "^4.12.2",
