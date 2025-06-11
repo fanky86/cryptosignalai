@@ -1,4 +1,3 @@
-// File: /pages/index.js
 export default function Home() {
   return (
     <div style={{ padding: 20, fontFamily: 'Arial', textAlign: 'center' }}>
