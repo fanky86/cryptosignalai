@@ -2,8 +2,8 @@ import { Telegraf } from 'telegraf';
 import ccxt from 'ccxt';
 import technicalindicators from 'technicalindicators';
 
-const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E'); // Ganti token kalau perlu
-const chatId = '7708185346'; // Ganti dengan chat ID kamu
+const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
+const chatId = '7708185346';
 
 const indodax = new ccxt.indodax();
 
@@ -11,9 +11,9 @@ const indodax = new ccxt.indodax();
   try {
     await indodax.loadMarkets();
 
-    const idrMarkets = Object.values(indodax.markets).filter(
-      m => m.symbol.endsWith('/IDR')
-    );
+    const idrMarkets = Object.values(indodax.markets)
+      .filter(m => m.symbol.endsWith('/IDR'))
+      .slice(0, 10); // Ambil hanya top 10 biar ringan
 
     const priceChanges = [];
 
@@ -32,7 +32,6 @@ const indodax = new ccxt.indodax();
     }
 
     priceChanges.sort((a, b) => b.change - a.change);
-
     const top = priceChanges[0];
 
     const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
@@ -46,7 +45,7 @@ const indodax = new ccxt.indodax();
       slowPeriod: 26,
       signalPeriod: 9,
       SimpleMAOscillator: false,
-      SimpleMASignal: false
+      SimpleMASignal: false,
     });
 
     const latestRSI = rsi.at(-1);
