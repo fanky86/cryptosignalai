@@ -4,7 +4,6 @@ import technicalindicators from 'technicalindicators';
 
 const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
 const chatId = '7708185346';
-
 const indodax = new ccxt.indodax();
 
 async function kirimSinyal() {
@@ -23,7 +22,7 @@ async function kirimSinyal() {
           change: ticker.percentage || 0,
           last: ticker.last,
         });
-      } catch (e) {
+      } catch (_) {
         continue;
       }
     }
@@ -52,38 +51,47 @@ async function kirimSinyal() {
 
     let signal = null;
     if (latestRSI < 30 && latestMACD.MACD > latestMACD.signal && priceNow > latestEMA) {
-      signal = '✅ BELI';
+      signal = '✅ <b style="color:green;">BELI</b>';
     } else if (latestRSI > 70 && latestMACD.MACD < latestMACD.signal && priceNow < latestEMA) {
-      signal = '❌ JUAL';
+      signal = '❌ <b style="color:red;">JUAL</b>';
     }
 
     const confidence = Math.floor(Math.random() * 11) + 90;
     const waktu = new Date().toLocaleString('id-ID');
 
-    let message = `
+    const warnaCoin = top.symbol.includes('BTC') ? '🟠' :
+                      top.symbol.includes('ETH') ? '🔵' :
+                      top.symbol.includes('DOGE') ? '🐶' :
+                      '💠';
+
+    const linkMarket = `https://indodax.com/market/${top.id}`;
+    const tombolAksi = signal?.includes('BELI') 
+      ? `<a href="${linkMarket}">🟢 Beli Sekarang</a>`
+      : signal?.includes('JUAL')
+        ? `<a href="${linkMarket}">🔴 Jual Sekarang</a>`
+        : '<i>⏳ Sinyal sedang dianalisis, tunggu update selanjutnya...</i>';
+
+    const message = `
 <b>🚀 [Crypto Signal AI]</b>
 
-<b>📈 Sinyal:</b> ${signal || '📡 Tidak Ada Sinyal Saat Ini'}
+<b>📈 Sinyal:</b> ${signal || '📡 <i>Tidak Ada Sinyal Saat Ini</i>'}
 
-<b>🪙 Koin:</b> <code>${top.symbol}</code>
+<b>🪙 Koin:</b> ${warnaCoin} <code>${top.symbol}</code>
 <b>💰 Harga Sekarang:</b> <b>Rp${priceNow.toLocaleString('id-ID')}</b>
 <b>📊 Perubahan 24 Jam:</b> ${top.change}%
 <b>🔍 Confidence:</b> <b>${confidence}%</b>
 <b>⏱️ Timeframe:</b> 1 Menit
 <b>🕒 Waktu:</b> ${waktu}
 
-${signal ? `<a href="https://indodax.com/market/${top.id}">${signal.includes('BELI') ? '🟢 Beli Sekarang' : '🔴 Jual Sekarang'}</a>` : '<i>⏳ Sinyal sedang dianalisis, tunggu update selanjutnya...</i>'}
+${tombolAksi}
 `;
 
-    await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML', disable_web_page_preview: true });
     console.log(`[+] Pesan dikirim ke Telegram pada ${waktu}`);
   } catch (error) {
     console.error('Terjadi kesalahan:', error);
   }
 }
 
-// Jalankan langsung
 kirimSinyal();
-
-// Ulangi tiap 60 detik (1 menit)
-setInterval(kirimSinyal, 60 * 1000);
+setInterval(kirimSinyal, 60 * 1000); // setiap 1 menit
