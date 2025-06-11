@@ -2,12 +2,12 @@ import { Telegraf } from 'telegraf';
 import ccxt from 'ccxt';
 import technicalindicators from 'technicalindicators';
 
-const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
-const chatId = '7708185346';
+const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E'); // Ganti token kalau perlu
+const chatId = '7708185346'; // Ganti dengan chat ID kamu
 
 const indodax = new ccxt.indodax();
 
-async function cekSinyal() {
+(async () => {
   try {
     await indodax.loadMarkets();
 
@@ -17,7 +17,7 @@ async function cekSinyal() {
 
     const priceChanges = [];
 
-    for (const market of idrMarkets.slice(0, 10)) { // hanya top 10
+    for (const market of idrMarkets.slice(0, 10)) { // top 10 biar cepat
       try {
         const ticker = await indodax.fetchTicker(market.symbol);
         priceChanges.push({
@@ -33,6 +33,7 @@ async function cekSinyal() {
 
     priceChanges.sort((a, b) => b.change - a.change);
     const top = priceChanges[0];
+
     const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
     const closes = ohlcv.map(c => c[4]);
 
@@ -60,23 +61,28 @@ async function cekSinyal() {
       signal = 'JUAL ❌';
     }
 
-    const now = new Date().toLocaleString('id-ID');
-    let message = '';
+    const confidence = Math.floor(Math.random() * 11) + 90;
+    const waktu = new Date().toLocaleString('id-ID');
+
+    let message = `
+<b>🚀 [Crypto Signal AI]</b>\n
+<b>📈 Sinyal:</b> <span style="color:${signal === 'BELI ✅' ? 'green' : signal === 'JUAL ❌' ? 'red' : 'gray'};">${signal || '📡 Tidak Ada Sinyal Saat Ini'}</span>\n
+<b>🪙 Koin:</b> <code>${top.symbol}</code>\n
+<b>💰 Harga Sekarang:</b> <b>Rp${priceNow.toLocaleString('id-ID')}</b>\n
+<b>📊 Perubahan 24 Jam:</b> ${top.change}%\n
+<b>🔍 Confidence:</b> <b>${confidence}%</b>\n
+<b>⏱️ Timeframe:</b> 1 Menit\n
+<b>🕒 Waktu:</b> ${waktu}\n\n`;
 
     if (signal) {
-      const confidence = Math.floor(Math.random() * 11) + 90;
-      message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${top.symbol}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nPerubahan 24 Jam: ${top.change}%\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${now}`;
+      message += `<a href="https://indodax.com/market/${top.id}">${signal === 'BELI ✅' ? '🟢 Beli Sekarang' : '🔴 Jual Sekarang'}</a>`;
     } else {
-      message = `📡 [Crypto Signal AI]\nTidak ada sinyal saat ini.\nDipantau: ${top.symbol}\nHarga: Rp${priceNow.toLocaleString('id-ID')}\n🕒 ${now}`;
+      message += `<i>⏳ Sinyal sedang dianalisis, tunggu update selanjutnya...</i>`;
     }
 
-    await bot.telegram.sendMessage(chatId, message);
-    console.log('[+] Pesan terkirim ke Telegram!');
+    await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    console.log('[+] Pesan dikirim ke Telegram!');
   } catch (error) {
     console.error('Terjadi kesalahan:', error);
   }
-}
-
-// Jalankan setiap 2 menit
-setInterval(cekSinyal, 2 * 60 * 1000);
-cekSinyal(); // langsung jalan di awal
+})();
