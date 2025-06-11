@@ -5,19 +5,44 @@ import technicalindicators from 'technicalindicators';
 const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
 const chatId = '7708185346';
 
-// Ganti simbol coin jadi versi yang didukung Indodax (semua lowercase dan pakai IDR)
-const coins = ['btc/idr', 'eth/idr', 'bnb/idr', 'sol/idr', 'xrp/idr', 'ada/idr', 'avax/idr', 'doge/idr', 'link/idr', 'dot/idr'];
-
-// Ganti binance → indodax
-const binance = new ccxt.indodax();
+const exchange = new ccxt.indodax();
 
 export default async function handler(req, res) {
   try {
     let messages = [];
 
-    for (let symbol of coins) {
-      const ohlcv = await binance.fetchOHLCV(symbol, '1m', undefined, 100);
-      const closes = ohlcv.map(c => c[4]);
+    await exchange.loadMarkets();
+
+    // Ambil semua symbol IDR
+    const idrMarkets = Object.keys(exchange.markets)
+      .filter(symbol => symbol.endsWith('/IDR'));
+
+    let gainers = [];
+
+    for (let symbol of idrMarkets) {
+      try {
+        const ohlcv = await exchange.fetchOHLCV(symbol, '1m', undefined, 2);
+        if (ohlcv.length < 2) continue;
+
+        const prevClose = ohlcv[0][4];
+        const currentClose = ohlcv[1][4];
+        const gain = ((currentClose - prevClose) / prevClose) * 100;
+
+        gainers.push({ symbol, gain, ohlcv });
+      } catch (err) {
+        // Skip kalau ada error ambil data OHLCV
+        continue;
+      }
+    }
+
+    // Urutkan berdasarkan gain terbesar
+    gainers.sort((a, b) => b.gain - a.gain);
+
+    // Ambil yang paling besar naikannya
+    const topGainer = gainers[0];
+
+    if (topGainer) {
+      const closes = topGainer.ohlcv.map(c => c[4]);
 
       const rsi = technicalindicators.RSI.calculate({ period: 14, values: closes });
       const ema = technicalindicators.EMA.calculate({ period: 14, values: closes });
@@ -45,7 +70,7 @@ export default async function handler(req, res) {
 
       if (signal) {
         const confidence = Math.floor(Math.random() * 11) + 90; // 90 - 100%
-        const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${symbol.toUpperCase()}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
+        const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${topGainer.symbol.toUpperCase()}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nKenaikan: ${topGainer.gain.toFixed(2)}%\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
         await bot.telegram.sendMessage(chatId, message);
         messages.push(message);
       }
