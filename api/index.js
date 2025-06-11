@@ -5,8 +5,11 @@ import technicalindicators from 'technicalindicators';
 const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
 const chatId = '7708185346';
 
-const coins = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'AVAX/USDT', 'DOGE/USDT', 'LINK/USDT', 'DOT/USDT'];
-const binance = new ccxt.binance();
+// Ganti simbol coin jadi versi yang didukung Indodax (semua lowercase dan pakai IDR)
+const coins = ['btc/idr', 'eth/idr', 'bnb/idr', 'sol/idr', 'xrp/idr', 'ada/idr', 'avax/idr', 'doge/idr', 'link/idr', 'dot/idr'];
+
+// Ganti binance → indodax
+const binance = new ccxt.indodax();
 
 export default async function handler(req, res) {
   try {
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
 
       if (signal) {
         const confidence = Math.floor(Math.random() * 11) + 90; // 90 - 100%
-        const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${symbol}\nHarga Sekarang: $${priceNow.toFixed(2)}\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
+        const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${symbol.toUpperCase()}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
         await bot.telegram.sendMessage(chatId, message);
         messages.push(message);
       }
