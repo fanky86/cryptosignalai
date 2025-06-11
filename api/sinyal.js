@@ -13,7 +13,7 @@ async function kirimSinyal() {
 
     const priceChanges = [];
 
-    for (const market of idrMarkets.slice(0, 10)) {
+    for (const market of idrMarkets.slice(0, 30)) {
       try {
         const ticker = await indodax.fetchTicker(market.symbol);
         priceChanges.push({
@@ -28,52 +28,53 @@ async function kirimSinyal() {
     }
 
     priceChanges.sort((a, b) => b.change - a.change);
-    const top = priceChanges[0];
+    const top5 = priceChanges.slice(0, 5);
 
-    const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
-    const closes = ohlcv.map(c => c[4]);
-
-    const rsi = technicalindicators.RSI.calculate({ period: 14, values: closes });
-    const ema = technicalindicators.EMA.calculate({ period: 14, values: closes });
-    const macd = technicalindicators.MACD.calculate({
-      values: closes,
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-      SimpleMAOscillator: false,
-      SimpleMASignal: false
-    });
-
-    const latestRSI = rsi.at(-1);
-    const latestEMA = ema.at(-1);
-    const latestMACD = macd.at(-1);
-    const priceNow = closes.at(-1);
-
-    let signal = null;
-    if (latestRSI < 30 && latestMACD.MACD > latestMACD.signal && priceNow > latestEMA) {
-      signal = '✅ <b style="color:green;">BELI</b>';
-    } else if (latestRSI > 70 && latestMACD.MACD < latestMACD.signal && priceNow < latestEMA) {
-      signal = '❌ <b style="color:red;">JUAL</b>';
-    }
-
-    const confidence = Math.floor(Math.random() * 11) + 90;
+    let fullMessage = `<b>🚀 [Crypto Signal AI - TOP 5]</b>\n\n`;
     const waktu = new Date().toLocaleString('id-ID');
 
-    const warnaCoin = top.symbol.includes('BTC') ? '🟠' :
-                      top.symbol.includes('ETH') ? '🔵' :
-                      top.symbol.includes('DOGE') ? '🐶' :
-                      '💠';
+    for (const top of top5) {
+      const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
+      const closes = ohlcv.map(c => c[4]);
 
-    const linkMarket = `https://indodax.com/market/${top.id}`;
-    const tombolAksi = signal?.includes('BELI') 
-      ? `<a href="${linkMarket}">🟢 Beli Sekarang</a>`
-      : signal?.includes('JUAL')
-        ? `<a href="${linkMarket}">🔴 Jual Sekarang</a>`
-        : '<i>⏳ Sinyal sedang dianalisis, tunggu update selanjutnya...</i>';
+      const rsi = technicalindicators.RSI.calculate({ period: 14, values: closes });
+      const ema = technicalindicators.EMA.calculate({ period: 14, values: closes });
+      const macd = technicalindicators.MACD.calculate({
+        values: closes,
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        SimpleMAOscillator: false,
+        SimpleMASignal: false
+      });
 
-    const message = `
-<b>🚀 [Crypto Signal AI]</b>
+      const latestRSI = rsi.at(-1);
+      const latestEMA = ema.at(-1);
+      const latestMACD = macd.at(-1);
+      const priceNow = closes.at(-1);
 
+      let signal = null;
+      if (latestRSI < 30 && latestMACD.MACD > latestMACD.signal && priceNow > latestEMA) {
+        signal = '✅ <b style="color:green;">BELI</b>';
+      } else if (latestRSI > 70 && latestMACD.MACD < latestMACD.signal && priceNow < latestEMA) {
+        signal = '❌ <b style="color:red;">JUAL</b>';
+      }
+
+      const confidence = Math.floor(Math.random() * 11) + 90;
+
+      const warnaCoin = top.symbol.includes('BTC') ? '🟠' :
+                        top.symbol.includes('ETH') ? '🔵' :
+                        top.symbol.includes('DOGE') ? '🐶' :
+                        '💠';
+
+      const linkMarket = `https://indodax.com/market/${top.id}`;
+      const tombolAksi = signal?.includes('BELI') 
+        ? `<a href="${linkMarket}">🟢 Beli Sekarang</a>`
+        : signal?.includes('JUAL')
+          ? `<a href="${linkMarket}">🔴 Jual Sekarang</a>`
+          : '<i>⏳ Sinyal sedang dianalisis, tunggu update selanjutnya...</i>';
+
+      fullMessage += `
 <b>📈 Sinyal:</b> ${signal || '📡 <i>Tidak Ada Sinyal Saat Ini</i>'}
 
 <b>🪙 Koin:</b> ${warnaCoin} <code>${top.symbol}</code>
@@ -81,17 +82,20 @@ async function kirimSinyal() {
 <b>📊 Perubahan 24 Jam:</b> ${top.change}%
 <b>🔍 Confidence:</b> <b>${confidence}%</b>
 <b>⏱️ Timeframe:</b> 1 Menit
-<b>🕒 Waktu:</b> ${waktu}
 
 ${tombolAksi}
+─────────────────────
 `;
+    }
 
-    await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML', disable_web_page_preview: true });
-    console.log(`[+] Pesan dikirim ke Telegram pada ${waktu}`);
+    fullMessage += `\n<b>🕒 Waktu:</b> ${waktu}`;
+
+    await bot.telegram.sendMessage(chatId, fullMessage, { parse_mode: 'HTML', disable_web_page_preview: true });
+    console.log(`[+] Pesan Top 5 dikirim ke Telegram pada ${waktu}`);
   } catch (error) {
     console.error('Terjadi kesalahan:', error);
   }
 }
 
 kirimSinyal();
-setInterval(kirimSinyal, 60 * 1000); // setiap 1 menit
+setInterval(kirimSinyal, 60 * 1000);
