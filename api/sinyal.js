@@ -7,13 +7,10 @@ const chatId = '7708185346';
 
 const indodax = new ccxt.indodax();
 
-(async () => {
+async function kirimSinyal() {
   try {
     await indodax.loadMarkets();
-
-    const idrMarkets = Object.values(indodax.markets).filter(
-      m => m.symbol.endsWith('/IDR')
-    );
+    const idrMarkets = Object.values(indodax.markets).filter(m => m.symbol.endsWith('/IDR'));
 
     const priceChanges = [];
 
@@ -79,8 +76,14 @@ ${signal ? `<a href="https://indodax.com/market/${top.id}">${signal.includes('BE
 `;
 
     await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
-    console.log('[+] Pesan dikirim ke Telegram!');
+    console.log(`[+] Pesan dikirim ke Telegram pada ${waktu}`);
   } catch (error) {
     console.error('Terjadi kesalahan:', error);
   }
-})();
+}
+
+// Jalankan langsung
+kirimSinyal();
+
+// Ulangi tiap 60 detik (1 menit)
+setInterval(kirimSinyal, 60 * 1000);
