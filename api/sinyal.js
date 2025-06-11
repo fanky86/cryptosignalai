@@ -1,4 +1,3 @@
-// File: /api/sinyal.js
 import { Telegraf } from 'telegraf';
 import ccxt from 'ccxt';
 import technicalindicators from 'technicalindicators';
