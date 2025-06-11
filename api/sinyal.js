@@ -2,18 +2,18 @@ import { Telegraf } from 'telegraf';
 import ccxt from 'ccxt';
 import technicalindicators from 'technicalindicators';
 
-const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E');
-const chatId = '7708185346';
+const bot = new Telegraf('8028981790:AAFjGZIe5o32B7BgvgH3hqATUMz0Wy4ji7E'); // Ganti token kalau perlu
+const chatId = '7708185346'; // Ganti dengan chat ID kamu
 
 const indodax = new ccxt.indodax();
 
-export default async function handler(req, res) {
+(async () => {
   try {
     await indodax.loadMarkets();
 
-    // Ambil semua market IDR
-    const idrMarkets = Object.values(indodax.markets)
-      .filter(m => m.symbol.endsWith('/IDR'));
+    const idrMarkets = Object.values(indodax.markets).filter(
+      m => m.symbol.endsWith('/IDR')
+    );
 
     const priceChanges = [];
 
@@ -22,20 +22,18 @@ export default async function handler(req, res) {
         const ticker = await indodax.fetchTicker(market.symbol);
         priceChanges.push({
           symbol: market.symbol,
-          id: market.id, // penting untuk fetchOHLCV
+          id: market.id,
           change: ticker.percentage || 0,
           last: ticker.last,
         });
       } catch (e) {
-        // skip jika error (pasar tidak aktif, dll)
         continue;
       }
     }
 
-    // Urutkan berdasarkan perubahan terbesar
     priceChanges.sort((a, b) => b.change - a.change);
 
-    const top = priceChanges[0]; // Coin dengan kenaikan tertinggi
+    const top = priceChanges[0];
 
     const ohlcv = await indodax.fetchOHLCV(top.id, '1m', undefined, 100);
     const closes = ohlcv.map(c => c[4]);
@@ -64,18 +62,16 @@ export default async function handler(req, res) {
       signal = 'JUAL ❌';
     }
 
-    let messages = [];
-
     if (signal) {
       const confidence = Math.floor(Math.random() * 11) + 90;
       const message = `🚨 [Crypto Signal AI] 🚨\nSinyal: ${signal}\nKoin: ${top.symbol}\nHarga Sekarang: Rp${priceNow.toLocaleString('id-ID')}\nPerubahan 24 Jam: ${top.change}%\nConfidence: ${confidence}%\nTimeframe: 1 Menit\n🕒 ${new Date().toLocaleString('id-ID')}`;
-      await bot.telegram.sendMessage(chatId, message);
-      messages.push(message);
-    }
 
-    res.status(200).json({ success: true, sent: messages.length, top });
+      await bot.telegram.sendMessage(chatId, message);
+      console.log('[+] Sinyal terkirim ke Telegram!');
+    } else {
+      console.log('[-] Tidak ada sinyal saat ini.');
+    }
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Terjadi kesalahan:', error);
   }
-}
+})();
